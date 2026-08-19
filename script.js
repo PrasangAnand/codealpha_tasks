@@ -1,70 +1,137 @@
-// Mobile Menu
+const expressionDisplay = document.getElementById("expression");
+const resultDisplay = document.getElementById("result");
+const buttons = document.querySelectorAll("button");
 
-const menuBtn = document.getElementById("menuBtn");
-const navLinks = document.getElementById("navLinks");
+let expression = "";
 
-menuBtn.addEventListener("click", () => {
-    navLinks.classList.toggle("active");
+function updateDisplay() {
+    expressionDisplay.textContent = expression || "0";
 
-    if (navLinks.classList.contains("active")) {
-        menuBtn.textContent = "✕";
-    } else {
-        menuBtn.textContent = "☰";
-    }
-});
-
-
-// Close mobile menu after clicking a link
-
-document.querySelectorAll(".nav-links a").forEach(link => {
-
-    link.addEventListener("click", () => {
-        navLinks.classList.remove("active");
-        menuBtn.textContent = "☰";
-    });
-
-});
-
-
-// Dark / Light Mode
-
-const themeBtn = document.getElementById("themeBtn");
-
-themeBtn.addEventListener("click", () => {
-
-    document.body.classList.toggle("dark");
-
-    if (document.body.classList.contains("dark")) {
-        themeBtn.textContent = "D☀️";
-        localStorage.setItem("theme", "dark");
-    } else {
-        themeBtn.textContent = "L🌙";
-        localStorage.setItem("theme", "light");
+    if (!expression) {
+        resultDisplay.textContent = "";
+        return;
     }
 
-});
+    try {
+        const value = calculateResult(expression);
 
-
-// Remember theme
-
-if (localStorage.getItem("theme") === "dark") {
-    document.body.classList.add("dark");
-    themeBtn.textContent = "☀️";
+        if (value !== null && isFinite(value)) {
+            resultDisplay.textContent = value;
+        } else {
+            resultDisplay.textContent = "";
+        }
+    } catch {
+        resultDisplay.textContent = "";
+    }
 }
 
+function calculateResult(exp) {
+    // Convert percentage
+    exp = exp.replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
 
-// Contact Form
+    // Allow only calculator characters
+    if (!/^[0-9+\-*/().%\s]+$/.test(exp)) {
+        throw new Error("Invalid input");
+    }
 
-const contactForm = document.getElementById("contactForm");
+    // Prevent incomplete expressions
+    if (/[+\-*/.]$/.test(exp)) {
+        return null;
+    }
 
-contactForm.addEventListener("submit", (event) => {
+    return Function('"use strict"; return (' + exp + ')')();
+}
 
-    event.preventDefault();
+function addValue(value) {
+    expression += value;
+    updateDisplay();
+}
 
-    const name = document.getElementById("name").value;
+function clearCalculator() {
+    expression = "";
+    updateDisplay();
+}
 
-    alert(`Thanks ${name}! Your message has been received.`);
+function deleteLast() {
+    expression = expression.slice(0, -1);
+    updateDisplay();
+}
 
-    contactForm.reset();
+function calculate() {
+    try {
+        const result = calculateResult(expression);
 
+        if (result === null || !isFinite(result)) {
+            resultDisplay.textContent = "Error";
+            return;
+        }
+
+        expression = String(result);
+        expressionDisplay.textContent = expression;
+        resultDisplay.textContent = result;
+    } catch {
+        resultDisplay.textContent = "Error";
+    }
+}
+
+// Button click handling
+buttons.forEach(button => {
+    button.addEventListener("click", () => {
+
+        const value = button.dataset.value;
+        const action = button.dataset.action;
+
+        if (value !== undefined) {
+            addValue(value);
+        }
+
+        if (action === "clear") {
+            clearCalculator();
+        }
+
+        if (action === "delete") {
+            deleteLast();
+        }
+
+        if (action === "calculate") {
+            calculate();
+        }
+    });
 });
+
+// Keyboard support
+document.addEventListener("keydown", (event) => {
+
+    const key = event.key;
+
+    // Numbers and operators
+    if (
+        /[0-9+\-*/.%]/.test(key)
+    ) {
+        addValue(key);
+    }
+
+    // Enter or =
+    else if (key === "Enter" || key === "=") {
+        calculate();
+    }
+
+    // Backspace
+    else if (key === "Backspace") {
+        deleteLast();
+    }
+
+    // Escape
+    else if (key === "Escape") {
+        clearCalculator();
+    }
+
+    // Prevent unwanted browser behavior
+    if (
+        ["Enter", "Backspace", "Escape"].includes(key)
+    ) {
+        event.preventDefault();
+    }
+});
+
+updateDisplay();
